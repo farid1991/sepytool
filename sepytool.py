@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from flasher import Flasher
+from sepytool.flasher import Flasher
 
 import argparse
 import logging

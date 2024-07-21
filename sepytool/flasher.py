@@ -1,9 +1,9 @@
 import logging
 import time
 
-from common import *
-from transport import Transport
-from sonyericsson import SonyEricsson
+from .common import *
+from .transport import Transport
+from .sonyericsson import SonyEricsson
 
 # local logger for this module
 log = logging.getLogger(__name__)

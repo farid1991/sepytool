@@ -1,9 +1,9 @@
 import logging
-
-from command import *
-from common import *
 from tqdm import tqdm
-from transport import *
+
+from .transport import *
+from .command import *
+from .common import *
 
 # local logger for this module
 log = logging.getLogger(__name__)

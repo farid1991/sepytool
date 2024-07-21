@@ -1,4 +1,4 @@
-from common import *
+from .common import *
 
 class Command:
     def __init__(self):
