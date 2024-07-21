@@ -254,7 +254,7 @@ class SonyEricsson:
 
                 Logger.LOG(
                     1,
-                    f"Flash ID:{self.flash_chip['id']} Size:{hex(self.flash_chip['size'])} Manufacture:{self.flash_chip['vendor']}",
+                    f"Flash ID:{self.flash_chip['id']} Size:{hex(self.flash_chip['size'])} Manufacturer:{self.flash_chip['vendor']}",
                 )
 
     def loader_get_otpdata(self):
