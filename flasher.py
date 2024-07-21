@@ -1,9 +1,13 @@
+import logging
+import time
+
 from common import *
-from log import Logger
 from transport import Transport
 from sonyericsson import SonyEricsson
 
-import time
+# local logger for this module
+log = logging.getLogger(__name__)
+
 
 class Flasher:
     def __init__(self, portname: str, baudrate: int = 115200, execute: str = "info"):
@@ -19,11 +23,9 @@ class Flasher:
 
     def wait_for_answer(self):
         # Wait for power-up the phone
-        Logger.LOG(
-            1, f"Connecting {self.transport._sl.port} at {self.transport._sl.baudrate}"
-        )
-        Logger.LOG(1, "Powering phone")
-        Logger.LOG(1, "Please wait ...")
+        log.info(f"Connecting {self.transport._sl.port} at {self.transport._sl.baudrate}")
+        log.info("Powering phone")
+        log.info("Please wait ...")
 
         response_mapping = {
             b"\x32": ("388", "Ericsson"),
@@ -51,7 +53,7 @@ class Flasher:
                 break
             time.sleep(0.02)
 
-        Logger.LOG(1, f"Detected {self.detected_type} {self.detected_name}")
+        log.info(f"Detected {self.detected_type} {self.detected_name}")
 
     def do_job(self):
         if self.detected_type == "SonyEricsson":

@@ -1,7 +1,12 @@
+import logging
+
 from command import *
 from common import *
 from tqdm import tqdm
 from transport import *
+
+# local logger for this module
+log = logging.getLogger(__name__)
 
 
 class SonyEricsson:
@@ -133,7 +138,7 @@ class SonyEricsson:
 
             res = self.transport.read_binary(1)
             if res[0] != 0x06:
-                Logger.LOG(0, "Command: Error {}", res)
+                log.debug("Command: Error {}", res)
                 break
 
             sent_bytes += bytes_to_send
@@ -151,64 +156,64 @@ class SonyEricsson:
 
     def loader_get_type(self, filename):
         if "_cs_" in filename:
-            Logger.LOG(1, "This is a CHIPSELECT loader")
+            log.info("This is a CHIPSELECT loader")
             return LoaderType.LOADER_CS
 
         elif "_prodid_" in filename:
-            Logger.LOG(1, "This is a PRODUCTION_ID loader")
+            log.info("This is a PRODUCTION_ID loader")
             return LoaderType.LOADER_PRODUCTION_ID
 
         elif "_cert_" in filename:
-            Logger.LOG(1, "This is a CERTIFICATE loader")
+            log.info("This is a CERTIFICATE loader")
             return LoaderType.LOADER_CERT
 
         elif "_patch_" in filename:
-            Logger.LOG(1, "This is a PATCHED_CERT loader")
+            log.info("This is a PATCHED_CERT loader")
             return LoaderType.LOADER_CERT
 
         elif "_flash_" in filename:
-            Logger.LOG(10, "This is a FLASH loader")
+            log.info("This is a FLASH loader")
             return LoaderType.LOADER_FLASH
 
         elif "_mem_patcher_" in filename:
-            Logger.LOG(1, "This is a MEM_PATCHER loader")
+            log.info("This is a MEM_PATCHER loader")
             return LoaderType.LOADER_FLASH
 
-        Logger.LOG(1, "This is a unknown loader")
+        log.info("This is a unknown loader")
         return LoaderType.LOADER_UNKNOWN
 
     def loader_sayhello(self, hello):
-        Logger.LOG(1, f"hello: {hello}")
+        log.info(f"hello: {hello}")
 
         if "CS_LOADER" in hello or "CSLOADER" in hello:
-            # Logger.LOG(1, "Applet code is a CHIPSELECT loader")
+            # log.info("Applet code is a CHIPSELECT loader")
             self.PHONE_loadertype = LoaderType.LOADER_CS
         elif "PRODUCTION_ID" in hello or "PRODUCTIONID" in hello:
-            # Logger.LOG(1, "Applet code is a PRODUCTION_ID loader")
+            # log.info("Applet code is a PRODUCTION_ID loader")
             self.PHONE_loadertype = LoaderType.LOADER_PRODUCTION_ID
         elif "CERTLOADER" in hello:
-            # Logger.LOG(1, "Applet code is a CERTIFICATE loader")
+            # log.info("Applet code is a CERTIFICATE loader")
             self.PHONE_loadertype = LoaderType.LOADER_CERT
         elif "FLASHLOADER" in hello:
-            # Logger.LOG(1, "Applet code is a FLASH loader")
+            # log.info("Applet code is a FLASH loader")
             self.PHONE_loadertype = LoaderType.LOADER_FLASH
         elif "MEM_PATCHER" in hello:
-            # Logger.LOG(1, "Applet code is a MEM_PATCHER loader")
+            # log.info("Applet code is a MEM_PATCHER loader")
             self.PHONE_loadertype = LoaderType.LOADER_FLASH
         else:
-            # Logger.LOG(1, "This is an unknown applet type")
+            # log.info("This is an unknown applet type")
             self.PHONE_loadertype = LoaderType.LOADER_UNKNOWN
 
     def loader_activate(self):
         if self.PHONE_loadertype == LoaderType.LOADER_CS:
-            Logger.LOG(1, "Activating CHIPSELECT loader...")
+            log.info("Activating CHIPSELECT loader...")
             self.send_binary_command_csloader(0x01, 0x09, DATA_EMPTY, 0)
             res = self.transport.read_binary()
             print(f"SIZE: {res[2:4]}")
             if res[0] != 0x06:
                 raise ValueError(f"Failed Activating loader  {res}")
 
-            Logger.LOG(1, "Activating GDFS...")
+            log.info("Activating GDFS...")
             self.send_binary_command_csloader(0x04, 0x05, DATA_EMPTY, 0)
             res = self.transport.read_binary()
             print(f"SIZE: {res[2:4]}")
@@ -216,21 +221,21 @@ class SonyEricsson:
                 raise ValueError(f"Failed Activating GDFS  {res}")
 
             self.transport.wait_for_byte(DATA_TYPE)
-            Logger.LOG(1, "GDFS activated")
+            log.info("GDFS activated")
 
             self.transport.read_binary(5)
             self.PHONE_loaderGDFSstarted = True
 
-            Logger.LOG(1, "Checking if loader is unlocked...")
+            log.info("Checking if loader is unlocked...")
 
             gdfsvar = b"\x02\x8f\x0c"
             self.send_binary_command_csloader(0x04, 0x01, gdfsvar, 3)
             res = self.transport.read_binary()
             if res[0] == 0x1E:
-                Logger.LOG(1, "This loader is LOCKED")
+                log.info("This loader is LOCKED")
             else:
                 self.PHONE_loaderunlocked = True
-                Logger.LOG(1, "This loader is UNLOCKED")
+                log.info("This loader is UNLOCKED")
 
         else:
             command = self.cmd.create_binary_command(0x0D, DATA_EMPTY, 0)
@@ -252,10 +257,7 @@ class SonyEricsson:
                 else:
                     self.flash_chip["size"] = 0
 
-                Logger.LOG(
-                    1,
-                    f"Flash ID:{self.flash_chip['id']} Size:{hex(self.flash_chip['size'])} Manufacturer:{self.flash_chip['vendor']}",
-                )
+                log.info("Flash ID:{id} Size:{size} Manufacturer:{vendor}".format(**self.flash_chip))
 
     def loader_get_otpdata(self):
         command = self.cmd.create_binary_command(0x24, DATA_EMPTY, 0)
@@ -270,10 +272,7 @@ class SonyEricsson:
             "imei": res[10:-1].decode(),
         }
 
-        Logger.LOG(
-            1,
-            f"OTP IMEI:{self.otp_data['imei']} STATUS:{self.otp_data['status']} CID:{self.otp_data['cid']} CLOSED:{self.otp_data['closed']} PAF:{self.otp_data['paf']}",
-        )
+        log.info("OTP IMEI:{imei} STATUS:{status} CID:{cid} CLOSED:{closed} PAF:{paf}".format(**self.otp_data))
 
     def loader_get_eromdata(self):
         command = self.cmd.create_binary_command(0x57, DATA_EMPTY, 0)
@@ -281,7 +280,7 @@ class SonyEricsson:
         res = self.transport.read_binary()
 
         if res[0] != 0x06:
-            Logger.LOG(3, "Reading EROM values failed")
+            log.warning("Reading EROM values failed")
 
         self.erom_data["cid"] = int.from_bytes(res[0xE : 0xE + 4], byteorder="little")
 
@@ -296,12 +295,10 @@ class SonyEricsson:
         else:
             self.erom_data["color"] = "Unknown"
 
-        Logger.LOG(
-            1, f"EROM Color:{self.erom_data['color'] } CID:{self.erom_data['cid']}"
-        )
+        log.info("EROM Color:{color} CID:{cid}".format(**self.erom_data))
 
     def loader_activate_gdfs(self):
-        Logger.LOG(1, "Activating GDFS...")
+        log.info("Activating GDFS...")
         command = self.cmd.create_binary_command(0x22, DATA_EMPTY, 0)
         self.command_send_header_and_data(command)
         res = self.transport.read_binary_with_timeout(1)
@@ -309,7 +306,7 @@ class SonyEricsson:
             raise ValueError(f"Failed Activating GDFS {res}")
 
         self.transport.wait_for_byte(DATA_TYPE)
-        Logger.LOG(1, "GDFS activated")
+        log.info("GDFS activated")
         self.PHONE_loaderGDFSstarted = True
 
         command = self.cmd.command_read_gdfs_var(0, 0x13, 0)
@@ -337,7 +334,7 @@ class SonyEricsson:
 
     def send_binaryloader_noactivate(self, fname):
         loader = "loader/" + fname
-        Logger.LOG(1, f"Sending binary {loader}")
+        log.info(f"Sending binary {loader}")
 
         loader_type = self.loader_get_type(loader)
 
@@ -406,7 +403,7 @@ class SonyEricsson:
 
     def send_qhloader_noactivate(self, fname):
         loader = "loader/" + fname
-        Logger.LOG(1, f"Sending {loader}")
+        log.info(f"Sending {loader}")
 
         self.loader_get_type(loader)
 
@@ -449,7 +446,7 @@ class SonyEricsson:
             self.transport.send_payload_to_serial(qd00, chunk_size=0x800, name="data")
             self.transport.transceive("EdQ")
 
-        Logger.LOG(1, "Device now in binary mode!")
+        log.info("Device now in binary mode!")
         self.PHONE_binarymode = True
 
         res = self.transport.read_binary()
@@ -477,7 +474,7 @@ class SonyEricsson:
             return
 
         if self.platform == "db2000" and self.baudrate > 460800:
-            Logger.LOG(1, f"Decrease baudrate")
+            log.info(f"Decrease baudrate")
             self.baudrate = 460800
             self.transport.send_command("S6")
             self.transport.set_baudrate(460800)
@@ -486,7 +483,7 @@ class SonyEricsson:
             self.transport.set_baudrate(self.baudrate)
 
         self.transport.reset_io_buffer()
-        Logger.LOG(1, f"Set baudrate to {self.baudrate}")
+        log.info(f"Set baudrate to {self.baudrate}")
 
     def get_platform_type(self, chip_id):
         if self.new_security == True:
@@ -515,24 +512,21 @@ class SonyEricsson:
             res[3] = 0x00
 
         if res[4] == 0x01:
-            Logger.LOG(1, "NEW SECURITY PHONE DETECTED! SWITCHING...")
+            log.info("NEW SECURITY PHONE DETECTED! SWITCHING...")
             self.new_security = True
 
         self.chip_id = f"{res[0]:02X}{res[1]:02X}"
         self.protocol = float(f"{res[2]:02X}.{res[3]:02X}")
         self.platform = self.get_platform_type(self.chip_id)
 
-        Logger.LOG(
-            1,
-            f"ChipID:{self.chip_id} Platform:{self.platform} Protocol:{self.protocol}",
-        )
+        log.info(f"ChipID:{self.chip_id} Platform:{self.platform} Protocol:{self.protocol}")
 
     def erom_read_var(self, cmd):
         hdr = "ICG1".encode()
         command = hdr + cmd
         self.transport.write_binary(command)
         res = self.transport.read_binary_with_timeout()
-        Logger.LOG(1, "erom_read_var({}): {}", command, res)
+        log.info("erom_read_var({}): {}", command, res)
 
     def prepare_pnx5230(self):
         cmd = b"\x00\x06\x00"
@@ -586,10 +580,8 @@ class SonyEricsson:
         res = self.transport.read_binary()
         self.erom_data["cid"] = int.from_bytes(res[2 : 2 + 4], byteorder="little")
 
-        Logger.LOG(1, f"Signature: {self.erom_data['sign']}")
-        Logger.LOG(
-            1, f"EROM Color:{self.erom_data['color'] } CID:{self.erom_data['cid']}"
-        )
+        log.info("Signature: {sign}".format(**self.erom_data))
+        log.info("EROM Color:{color} CID:{cid}".format(**self.erom_data))
 
         if self.platform == "pnx5230":
             self.prepare_pnx5230()
@@ -645,24 +637,24 @@ class SonyEricsson:
             self.shutdown()
 
         else:
-            Logger.LOG(1, "Protocol is not supported...")
+            log.info("Protocol is not supported...")
             exit
 
     def print_phone_info(self):
-        Logger.LOG(1, "Phone info")
-        Logger.LOG(1, f"Name: {self.phone_info['name']}")
-        Logger.LOG(1, f"Language: {self.phone_info['language']}")
-        Logger.LOG(1, f"CDA Article: {self.phone_info['cda_article']}")
-        Logger.LOG(1, f"CDA Revision: {self.phone_info['cda_revision']}")
-        Logger.LOG(1, f"Default Article: {self.phone_info['default_article']}")
-        Logger.LOG(1, f"Default Version: {self.phone_info['default_version']}")
+        log.info("Phone info")
+        log.info(f"Name: {self.phone_info['name']}")
+        log.info(f"Language: {self.phone_info['language']}")
+        log.info(f"CDA Article: {self.phone_info['cda_article']}")
+        log.info(f"CDA Revision: {self.phone_info['cda_revision']}")
+        log.info(f"Default Article: {self.phone_info['default_article']}")
+        log.info(f"Default Version: {self.phone_info['default_version']}")
 
         if self.platform != "db2020":
-            Logger.LOG(1, f"Usercode: {self.user_code}")
+            log.info(f"Usercode: {self.user_code}")
 
     def identify(self):
         if self.platform == "pnx5230":
-            Logger.LOG(1, "Platform is not supported...")
+            log.info("Platform is not supported...")
             exit
 
         self.enter_binary_mode()
@@ -697,7 +689,7 @@ class SonyEricsson:
                 "default_version": (0x02, 0xEB, 0x0D, "utf-8"),
             }
 
-        Logger.LOG(1, "Reading Phone info")
+        log.info("Reading Phone info")
 
         for attribute, params in gdfs_values.items():
             value = self.loader_read_gdfs_var(*params)
@@ -707,19 +699,19 @@ class SonyEricsson:
             self.detect_lockcode()
             # self.get_simlock_status()
 
-        Logger.LOG(1, "Done")
+        log.info("Done")
 
     def unlock_usercode_db2020(self):
         self.prepare_csloader()
 
-        Logger.LOG(1, "Resetting Lock Code...")
+        log.info("Resetting Lock Code...")
         self.send_binary_command_csloader(0x01, 0x0D, DATA_EMPTY, 0)
         res = self.transport.read_binary()
         if res[0] != 0x06:
             raise ValueError("Failed")
 
         res = self.transport.read_binary()
-        Logger.LOG(1, "Lock Code...Reset to '0000'!")
+        log.info("Lock Code...Reset to '0000'!")
 
         # shutdown
         self.shutdown_csloader()
@@ -752,11 +744,11 @@ class SonyEricsson:
             self.user_code = usercode[:usercode_len]
 
     def break_db2010_cid36(self):
-        Logger.LOG(1, "Bypassing RSA...")
+        log.info("Bypassing RSA...")
         self.send_loader(DB2010_CERTLOADER_RED_CID01_R2E)
 
         loader = "loader/" + DB2010_PATCH_R2E
-        Logger.LOG(1, f"Sending {loader}")
+        log.info(f"Sending {loader}")
 
         self.loader_get_type(loader)
 
@@ -767,24 +759,24 @@ class SonyEricsson:
             self.command_send_header_and_data(command)
             res = self.transport.read_binary(1)
             if res[0] != 0x06:
-                Logger.LOG(0, "Cannot break-in the sec unit. {}", res)
+                log.debug("Cannot break-in the sec unit. {}", res)
 
         res = self.transport.read_binary()
         hello = res[6:-1].decode()
         self.loader_sayhello(hello)
 
-        Logger.LOG(1, "RSA security disabled!")
+        log.info("RSA security disabled!")
 
     def csloader_backup_gdfs(self):
         if not self.PHONE_loaderGDFSstarted or not self.PHONE_loaderunlocked:
             return
 
-        Logger.LOG(0, "Backing up the GDFS...")
+        log.debug("Backing up the GDFS...")
         self.send_binary_command_csloader(0x04, 0x02, DATA_EMPTY, 0)
         res = self.transport.read_binary()
 
         if res[0] != 0x06:
-            Logger.LOG(0, "Backup: Error")
+            log.debug("Backup: Error")
             return
 
         buffer = bytearray(0x10000)
@@ -796,11 +788,11 @@ class SonyEricsson:
         buffer[bytesread:] = self.transport.read_binary(9)
 
         datasize = (buffer[bytesread + 2] | (buffer[bytesread + 3] << 8)) + 1
-        Logger.LOG(0, "GDFS size: {}", datasize)
+        log.debug("GDFS size: {}", datasize)
 
         offs = 6
         varcounts = int.from_bytes(buffer[offs : offs + 4], byteorder="little")
-        Logger.LOG(0, "Stated variables: {}", varcounts)
+        log.debug("Stated variables: {}", varcounts)
 
         bytesread = 10
         chunkcount = 0
@@ -809,7 +801,7 @@ class SonyEricsson:
                 buffer[bytesread:] = self.transport.read_binary(1)
 
                 if bytesread >= datasize:
-                    Logger.LOG(0, "Variables found at {}", chunkcount)
+                    log.debug("Variables found at {}", chunkcount)
 
                     file.write(buffer[6:bytesread])
 
@@ -819,7 +811,7 @@ class SonyEricsson:
                     datasize = (
                         buffer[bytesread + 2] | (buffer[bytesread + 3] << 8)
                     ) + 1
-                    Logger.LOG(0, "GDFS size: {}", datasize)
+                    log.debug("GDFS size: {}", datasize)
 
                     bytesread = 6
                     chunkcount = 0
@@ -839,11 +831,11 @@ class SonyEricsson:
 
                 chunkcount += 1
 
-            Logger.LOG(0, "Variables found: {}", chunkcount)
+            log.debug("Variables found: {}", chunkcount)
             file.write(buffer[6:bytesread])
 
-            Logger.LOG(0, "Wrote backup to gdfs.bin")
-            Logger.LOG(0, "GDFS was backed up successfully!")
+            log.debug("Wrote backup to gdfs.bin")
+            log.debug("GDFS was backed up successfully!")
 
     def csloader_db2010(self):
         cid = self.erom_data["cid"]
@@ -918,10 +910,10 @@ class SonyEricsson:
             self.PHONE_cert_already_sent = True
 
         elif cid == 53:
-            Logger.LOG(1, f"CID:{cid} not supported")
+            log.info(f"CID:{cid} not supported")
 
         else:
-            Logger.LOG(1, f"Unknown CID:{cid}")
+            log.info(f"Unknown CID:{cid}")
 
     def prepare_csloader(self):
         self.PHONE_csloader = True
@@ -935,7 +927,7 @@ class SonyEricsson:
             self.csloader_db2020()
 
     def shutdown_csloader(self):
-        Logger.LOG(1, "Terminating GDFS Access...")
+        log.info("Terminating GDFS Access...")
         self.send_binary_command_csloader(0x01, 0x08, DATA_EMPTY, 0)
         res = self.transport.read_binary()
         if res[0] != 0x06:
@@ -950,4 +942,4 @@ class SonyEricsson:
         command = self.cmd.create_binary_command(0x14, DATA_EMPTY, 0)
         self.command_send_header_and_data(command)  # Shutdown
         self.transport.read_binary()
-        Logger.LOG(1, "Shutdown phone")
+        log.info("Shutdown phone")

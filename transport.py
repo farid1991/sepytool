@@ -1,8 +1,11 @@
-from log import *
 from tqdm import tqdm
 
+import logging
 import serial
 import time
+
+# local logger for this module
+log = logging.getLogger(__name__)
 
 
 class Transport:
@@ -84,7 +87,7 @@ class Transport:
             # Check if the desired string is present in the received data
             if desired_string in received_data[-buffer_size:]:
                 break
-        # Logger.LOG(1, f"Received data: {received_data}")
+        log.debug(f"Received data: {received_data.hex()}")
 
     def send_command(self, command):
         self.write_binary(command.encode())
